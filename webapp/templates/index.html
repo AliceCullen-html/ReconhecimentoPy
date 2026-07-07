@@ -9,15 +9,19 @@
 <body>
   <div class="wrap">
     <header>
-      <h1>baia-vision-poc</h1>
-      <p class="sub">Front de teste — suba um vídeo royalty-free para rodar o pipeline.</p>
+      <div class="brand">
+        <span class="dot"></span>
+        <span class="kicker">baia-vision-poc</span>
+      </div>
+      <h1>Front de teste</h1>
+      <p class="sub">Suba um vídeo royalty-free para rodar o pipeline de visão.</p>
     </header>
 
     <form class="panel" id="form" action="{{ url_for('process') }}" method="post"
           enctype="multipart/form-data">
       <label class="dropzone" id="drop">
-        <div>Arraste um vídeo aqui ou <strong>clique para escolher</strong></div>
-        <div class="note">.mp4 / .mov / .avi / .mkv — até 300 MB</div>
+        <div class="title">Arraste um vídeo aqui ou <strong>clique para escolher</strong></div>
+        <div class="note" style="margin-top:2px;">.mp4 · .mov · .avi · .mkv — até {{ max_mb }} MB</div>
         <input type="file" id="video" name="video"
                accept=".mp4,.mov,.avi,.mkv,video/*" required>
         <div class="filename" id="filename"></div>
@@ -28,23 +32,22 @@
       </button>
 
       <div class="spinner" id="spinner">
-        ⏳ Processando… a inferência frame a frame pode levar alguns minutos
-        dependendo do vídeo e do hardware. Não feche a aba.
+        <span class="ring"></span>
+        <span>Processando… a inferência frame a frame pode levar alguns minutos.
+          Não feche a aba.</span>
       </div>
     </form>
 
     <div class="panel">
-      <div style="color:var(--muted);font-size:.85rem;margin-bottom:8px;">
-        CONFIGURAÇÃO ATIVA (<code>config/config.yaml</code>)
-      </div>
+      <div class="panel-label">Configuração ativa · config/config.yaml</div>
       <div class="meta">
-        <span>Modelo: <b>{{ cfg.model }}</b></span>
-        <span>Confiança: <b>{{ cfg.conf }}</b></span>
-        <span>Zona: <b>{{ cfg.zone }}</b></span>
-        <span>Alertas: <b>{{ cfg.alerts|length }}</b></span>
+        <span>Modelo <b>{{ cfg.model }}</b></span>
+        <span>Confiança <b>{{ cfg.conf }}</b></span>
+        <span>Zona <b>{{ cfg.zone }}</b></span>
+        <span>Alertas <b>{{ cfg.alerts|length }}</b></span>
       </div>
       <p class="note">
-        ⚠️ Use somente <b>footage royalty-free</b> (Pexels/Pixabay/Mixkit).
+        ⚠ Use somente <b>footage royalty-free</b> (Pexels · Pixabay · Mixkit).
         Esta POC não é sistema de segurança de vida — ver README.
       </p>
     </div>

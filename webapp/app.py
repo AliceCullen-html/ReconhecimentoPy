@@ -101,7 +101,7 @@ def _maybe_transcode_h264(src: Path) -> Path | None:
 @app.route("/", methods=["GET"])
 def index():
     """Página inicial com o formulário de upload."""
-    return render_template("index.html", cfg=_config_summary())
+    return render_template("index.html", cfg=_config_summary(), max_mb=_max_mb)
 
 
 @app.route("/process", methods=["POST"])

@@ -9,36 +9,40 @@
 <body>
   <div class="wrap">
     <header>
+      <div class="brand">
+        <span class="dot"></span>
+        <span class="kicker">baia-vision-poc</span>
+      </div>
       <h1>Resultado</h1>
-      <p class="sub">{{ original_name }} &middot; execução <code>{{ run_id }}</code></p>
+      <p class="sub">{{ original_name }} · execução <code>{{ run_id }}</code></p>
     </header>
 
     <div class="panel">
       <div class="meta">
-        <span>Frames processados: <b>{{ frames }}</b></span>
-        <span>FPS: <b>{{ fps }}</b></span>
-        <span>Eventos: <b>{{ events|length }}</b></span>
+        <span>Frames <b>{{ frames }}</b></span>
+        <span>FPS <b>{{ fps }}</b></span>
+        <span>Eventos <b>{{ events|length }}</b></span>
       </div>
     </div>
 
     {% if inline_video %}
     <div class="panel">
-      <div style="color:var(--muted);font-size:.85rem;margin-bottom:6px;">VÍDEO ANOTADO</div>
+      <div class="panel-label">Vídeo anotado</div>
       <video controls preload="metadata" src="{{ inline_video }}"></video>
       <div class="links">
-        <a class="btn" href="{{ download_video }}" download>⬇ Baixar vídeo anotado</a>
+        <a class="btn" href="{{ download_video }}" download>⬇ Baixar vídeo</a>
         {% if json_url %}<a class="btn" href="{{ json_url }}" download>⬇ Baixar events.json</a>{% endif %}
       </div>
       <p class="note">
         Se o player não tocar (codec mp4v não é universal em navegadores),
-        use o botão de download. Instale <code>ffmpeg</code> na máquina para
-        habilitar o preview H.264 automático.
+        use o download. Com <code>ffmpeg</code> instalado, o preview H.264 é
+        gerado automaticamente.
       </p>
     </div>
     {% endif %}
 
     <div class="panel">
-      <div style="color:var(--muted);font-size:.85rem;margin-bottom:10px;">LOG DE EVENTOS</div>
+      <div class="panel-label">Log de eventos</div>
       {% if events %}
       <table>
         <thead>
@@ -47,9 +51,9 @@
         <tbody>
           {% for ev in events %}
           <tr>
-            <td>{{ '%.2f'|format(ev.timestamp_s) }}</td>
+            <td class="num">{{ '%.2f'|format(ev.timestamp_s) }}</td>
             <td><span class="tag {{ ev.tipo }}">{{ ev.tipo }}</span></td>
-            <td>{{ '%.2f'|format(ev.duracao_s) if ev.duracao_s is defined else '—' }}</td>
+            <td class="num">{{ '%.2f'|format(ev.duracao_s) if ev.duracao_s is defined else '—' }}</td>
             <td>{{ ev.descricao }}</td>
           </tr>
           {% endfor %}
