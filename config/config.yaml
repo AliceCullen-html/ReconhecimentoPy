@@ -1,0 +1,32 @@
+# =====================================================================
+# Configuração da POC baia-vision-poc.
+# Toda parametrização vive aqui — NADA é hardcoded no código.
+# =====================================================================
+
+model:
+  weights: "yolo11n.pt"       # trocar por yolo11s.pt para mais precisão
+  conf: 0.35                   # confiança mínima da detecção
+  classes: [0, 7]              # COCO: 0=person, 7=truck
+
+zone:
+  # Polígono da baia em coordenadas fracionárias (0..1) da largura/altura.
+  # Independente da resolução do vídeo; convertido para pixels em runtime.
+  name: "BAIA 01"
+  polygon: [[0.25, 0.45], [0.75, 0.45], [0.85, 0.95], [0.15, 0.95]]
+
+operation:
+  # Regra de início/fim com histerese (debounce) para evitar flicker.
+  start_requires: ["truck_in_zone", "person_in_zone"]
+  end_when: "truck_absent"
+  debounce_frames_start: 15    # frames sustentados p/ confirmar início
+  debounce_frames_end: 30      # frames sustentados p/ confirmar fim
+
+alerts:
+  - name: "pessoa_em_zona_sem_operacao"
+    description: "Pessoa na baia sem operação ativa (risco de atropelamento)"
+    when: "person_in_zone AND NOT operation_active"
+    severity: "warning"
+
+output:
+  annotated_video: true
+  events_json: true
