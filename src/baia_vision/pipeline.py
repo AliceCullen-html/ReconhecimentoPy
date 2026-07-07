@@ -117,9 +117,25 @@ def run_pipeline(
         raise RuntimeError(f"Não foi possível abrir o vídeo: {input_path}")
 
     fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    src_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    src_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 0
+
+    # --- Otimizações de custo (essenciais em hosts pequenos) ---
+    # max_width: redimensiona o frame antes de detectar/anotar → corta RAM e CPU.
+    # frame_stride: roda a detecção só a cada N frames e reaproveita as caixas
+    #   nos frames intermediários (o vídeo/estado seguem quadro a quadro). O
+    #   debounce continua em frames REAIS, então os tempos não mudam.
+    proc_cfg = config.get("processing", {}) or {}
+    max_width = int(proc_cfg.get("max_width", 0) or 0)
+    frame_stride = max(1, int(proc_cfg.get("frame_stride", 1) or 1))
+
+    if max_width and src_width > max_width:
+        scale = max_width / src_width
+        width = max_width
+        height = int(round(src_height * scale))
+    else:
+        width, height = src_width, src_height
 
     # --- Instancia as camadas a partir da config ---
     model_cfg = config["model"]
@@ -146,14 +162,24 @@ def run_pipeline(
     result = PipelineResult(video_path=video_path, fps=fps)
 
     frame_idx = 0
+    last_detections: list[Detection] = []
     try:
         while True:
             ok, frame = cap.read()
             if not ok:
                 break
 
+            # Redimensiona (uma vez) para a resolução de processamento.
+            if frame.shape[1] != width or frame.shape[0] != height:
+                frame = cv2.resize(frame, (width, height))
+
             timestamp_s = frame_idx / fps if fps else 0.0
-            detections = detector.detect(frame)
+
+            # Detecta só a cada `frame_stride` frames; reaproveita as últimas
+            # caixas nos intermediários (economiza inferência/CPU).
+            if frame_idx % frame_stride == 0:
+                last_detections = detector.detect(frame)
+            detections = last_detections
 
             zone_flags = _compute_zone_flags(detections, zone)
             op_machine.update(zone_flags, frame_idx, timestamp_s)

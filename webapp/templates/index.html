@@ -45,6 +45,8 @@
         <span>Confiança <b>{{ cfg.conf }}</b></span>
         <span>Zona <b>{{ cfg.zone }}</b></span>
         <span>Alertas <b>{{ cfg.alerts|length }}</b></span>
+        {% if cfg.max_width %}<span>Largura máx. <b>{{ cfg.max_width }}px</b></span>{% endif %}
+        {% if cfg.stride and cfg.stride > 1 %}<span>Stride <b>{{ cfg.stride }}</b></span>{% endif %}
       </div>
       <p class="note">
         ⚠ Use somente <b>footage royalty-free</b> (Pexels · Pixabay · Mixkit).

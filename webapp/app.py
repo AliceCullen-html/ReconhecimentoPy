@@ -2,16 +2,20 @@
 """Front de teste (opcional) da POC baia-vision-poc.
 
 NÃO faz parte do núcleo da POC — o pipeline continua rodável por CLI
-(``scripts/run.py``). Esta é apenas uma camada web mínima (Flask) para
-*testar* o sistema pelo navegador: sobe-se um vídeo, roda-se o pipeline e
-veem-se os resultados (tabela de eventos + vídeo anotado + events.json).
+(``scripts/run.py``). Esta é uma camada web mínima (Flask) para *testar* o
+sistema pelo navegador: sobe-se um vídeo, roda-se o pipeline e veem-se os
+resultados (tabela de eventos + vídeo anotado + events.json).
 
 Decisões (mais simples):
-    * Flask puro, síncrono (o request espera o processamento) — suficiente
-      para uma POC/demonstração; não é um serviço de produção.
-    * Reaproveita ``config/config.yaml`` do repo; nada de config duplicada.
-    * Se ``ffmpeg`` estiver disponível, transcodifica o vídeo anotado para
-      H.264 (avc1) para tocar inline no navegador; senão, oferece download.
+    * Processamento **assíncrono** em uma thread de fundo, com página de
+      progresso que consulta ``/status``. Isso evita que um request HTTP fique
+      pendurado minutos (proxies/hosts derrubam com 502) — importante em hosts
+      pequenos/lentos como o Render free.
+    * Estado dos jobs vive em memória do processo (dict). Como o deploy usa 1
+      worker, isso basta para a POC; reiniciou, perdeu os jobs (aceitável).
+    * Reaproveita ``config/config.yaml`` do repo; parâmetros de custo podem ser
+      sobrescritos por env (``PROC_MAX_WIDTH``, ``PROC_FRAME_STRIDE``).
+    * Se ``ffmpeg`` existir, transcodifica o vídeo para H.264 (toca inline).
 
 Uso::
 
@@ -25,12 +29,15 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
 import uuid
 from pathlib import Path
 
 from flask import (
     Flask,
     abort,
+    jsonify,
+    redirect,
     render_template,
     request,
     send_from_directory,
@@ -58,15 +65,38 @@ app = Flask(__name__)
 _max_mb = int(os.environ.get("MAX_UPLOAD_MB", "300"))
 app.config["MAX_CONTENT_LENGTH"] = _max_mb * 1024 * 1024
 
+# Registro de jobs em memória: job_id -> dict(status, progress, result/error...).
+_JOBS: dict[str, dict] = {}
+_JOBS_LOCK = threading.Lock()
+
+
+def _load_config_with_overrides() -> dict:
+    """Carrega o config e aplica overrides de custo vindos de env.
+
+    ``PROC_MAX_WIDTH`` e ``PROC_FRAME_STRIDE`` permitem apertar o custo no
+    deploy (ex.: Render free) sem alterar o ``config.yaml`` versionado.
+    """
+    cfg = load_config(CONFIG_PATH)
+    proc = dict(cfg.get("processing", {}) or {})
+    if os.environ.get("PROC_MAX_WIDTH"):
+        proc["max_width"] = int(os.environ["PROC_MAX_WIDTH"])
+    if os.environ.get("PROC_FRAME_STRIDE"):
+        proc["frame_stride"] = int(os.environ["PROC_FRAME_STRIDE"])
+    cfg["processing"] = proc
+    return cfg
+
 
 def _config_summary() -> dict:
     """Resumo do config ativo para exibir na página inicial."""
-    cfg = load_config(CONFIG_PATH)
+    cfg = _load_config_with_overrides()
+    proc = cfg.get("processing", {})
     return {
         "model": cfg["model"].get("weights", "yolo11n.pt"),
         "conf": cfg["model"].get("conf", 0.35),
         "zone": cfg["zone"].get("name", "ZONA"),
         "alerts": [a.get("name") for a in cfg.get("alerts", [])],
+        "max_width": proc.get("max_width", 0),
+        "stride": proc.get("frame_stride", 1),
     }
 
 
@@ -98,6 +128,47 @@ def _maybe_transcode_h264(src: Path) -> Path | None:
         return None
 
 
+def _run_job(job_id: str, input_path: Path, out_dir: Path, config: dict) -> None:
+    """Executa o pipeline em background e atualiza o estado do job.
+
+    Roda em uma thread separada; comunica progresso e resultado via ``_JOBS``.
+    Guarda apenas nomes de arquivo (as URLs são montadas na rota ``/result``,
+    onde há contexto de request).
+    """
+    def progress_cb(current: int, total: int) -> None:
+        with _JOBS_LOCK:
+            _JOBS[job_id]["progress"] = {"current": current, "total": total}
+
+    try:
+        result = run_pipeline(input_path, out_dir, config, progress_cb=progress_cb)
+
+        playable_name = None
+        video_name = None
+        if result.video_path is not None:
+            video_name = result.video_path.name
+            h264 = _maybe_transcode_h264(result.video_path)
+            playable_name = (h264 or result.video_path).name
+
+        payload = {
+            "run_id": out_dir.name,
+            "events": [e.to_dict() for e in result.events],
+            "frames": result.frames_processed,
+            "fps": round(result.fps, 2),
+            "video_name": video_name,
+            "playable_name": playable_name,
+            "json_name": (
+                result.events_json_path.name
+                if result.events_json_path is not None
+                else None
+            ),
+        }
+        with _JOBS_LOCK:
+            _JOBS[job_id].update(status="done", result=payload)
+    except Exception as exc:  # noqa: BLE001 — reporta qualquer falha ao usuário
+        with _JOBS_LOCK:
+            _JOBS[job_id].update(status="error", error=str(exc))
+
+
 @app.route("/", methods=["GET"])
 def index():
     """Página inicial com o formulário de upload."""
@@ -106,7 +177,7 @@ def index():
 
 @app.route("/process", methods=["POST"])
 def process():
-    """Recebe o vídeo, roda o pipeline e renderiza os resultados."""
+    """Recebe o vídeo, dispara o job em background e redireciona ao progresso."""
     file = request.files.get("video")
     if file is None or file.filename == "":
         abort(400, "Nenhum arquivo enviado.")
@@ -115,7 +186,6 @@ def process():
     if ext not in ALLOWED_EXT:
         abort(400, f"Extensão não suportada: {ext}. Use {sorted(ALLOWED_EXT)}.")
 
-    # ID de execução isola upload e saídas de cada teste.
     run_id = uuid.uuid4().hex[:12]
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     safe_name = secure_filename(file.filename) or f"upload{ext}"
@@ -123,41 +193,89 @@ def process():
     file.save(str(input_path))
 
     out_dir = OUTPUT_DIR / run_id
-    config = load_config(CONFIG_PATH)
+    config = _load_config_with_overrides()
 
-    try:
-        result = run_pipeline(input_path, out_dir, config)
-    except (RuntimeError, FileNotFoundError) as exc:
-        abort(400, f"Falha ao processar o vídeo: {exc}")
+    job_id = uuid.uuid4().hex[:12]
+    with _JOBS_LOCK:
+        _JOBS[job_id] = {
+            "status": "processing",
+            "progress": {"current": 0, "total": 0},
+            "original_name": file.filename,
+        }
 
-    # Vídeo para tocar inline: H.264 se possível, senão o mp4v original.
-    inline_video = None
-    download_video = None
-    if result.video_path is not None:
-        h264 = _maybe_transcode_h264(result.video_path)
-        playable = h264 if h264 is not None else result.video_path
-        inline_video = url_for("output_file", run_id=run_id, filename=playable.name)
-        download_video = url_for(
-            "output_file", run_id=run_id, filename=result.video_path.name
+    thread = threading.Thread(
+        target=_run_job,
+        args=(job_id, input_path, out_dir, config),
+        daemon=True,
+    )
+    thread.start()
+
+    return redirect(url_for("job_page", job_id=job_id))
+
+
+@app.route("/job/<job_id>", methods=["GET"])
+def job_page(job_id: str):
+    """Página de progresso; consulta ``/status`` até o job terminar."""
+    with _JOBS_LOCK:
+        job = _JOBS.get(job_id)
+    if job is None:
+        abort(404, "Job não encontrado (pode ter expirado após um restart).")
+    return render_template(
+        "job.html", job_id=job_id, original_name=job.get("original_name", "")
+    )
+
+
+@app.route("/status/<job_id>", methods=["GET"])
+def job_status(job_id: str):
+    """Estado do job em JSON, consumido pela página de progresso."""
+    with _JOBS_LOCK:
+        job = _JOBS.get(job_id)
+        if job is None:
+            return jsonify({"status": "not_found"}), 404
+        data = {"status": job["status"], "progress": job.get("progress", {})}
+        if job["status"] == "done":
+            data["result_url"] = url_for("result_page", job_id=job_id)
+        elif job["status"] == "error":
+            data["error"] = job.get("error", "erro desconhecido")
+    return jsonify(data)
+
+
+@app.route("/result/<job_id>", methods=["GET"])
+def result_page(job_id: str):
+    """Renderiza os resultados de um job concluído."""
+    with _JOBS_LOCK:
+        job = _JOBS.get(job_id)
+    if job is None:
+        abort(404, "Job não encontrado.")
+    if job["status"] != "done":
+        return redirect(url_for("job_page", job_id=job_id))
+
+    res = job["result"]
+    run_id = res["run_id"]
+    inline_video = download_video = None
+    if res["video_name"] is not None:
+        inline_video = url_for(
+            "output_file", run_id=run_id, filename=res["playable_name"]
         )
-
-    events = [e.to_dict() for e in result.events]
+        download_video = url_for(
+            "output_file", run_id=run_id, filename=res["video_name"]
+        )
     json_url = (
-        url_for("output_file", run_id=run_id, filename=result.events_json_path.name)
-        if result.events_json_path is not None
+        url_for("output_file", run_id=run_id, filename=res["json_name"])
+        if res["json_name"] is not None
         else None
     )
 
     return render_template(
         "result.html",
         run_id=run_id,
-        original_name=file.filename,
-        events=events,
+        original_name=job.get("original_name", ""),
+        events=res["events"],
         inline_video=inline_video,
         download_video=download_video,
         json_url=json_url,
-        frames=result.frames_processed,
-        fps=round(result.fps, 2),
+        frames=res["frames"],
+        fps=res["fps"],
     )
 
 
@@ -173,4 +291,5 @@ def output_file(run_id: str, filename: str):
 
 if __name__ == "__main__":
     # host/port fixos e simples; debug ligado para uso local de teste.
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    # use_reloader=False para não rodar o job em um processo que será reiniciado.
+    app.run(host="127.0.0.1", port=5000, debug=True, use_reloader=False)

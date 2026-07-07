@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Processando — baia-vision-poc</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <span class="dot"></span>
+        <span class="kicker">baia-vision-poc</span>
+      </div>
+      <h1>Processando</h1>
+      <p class="sub">{{ original_name }}</p>
+    </header>
+
+    <div class="panel">
+      <div class="progress-head">
+        <span class="pct" id="pct">0%</span>
+        <span class="frames" id="frames">iniciando…</span>
+      </div>
+      <div class="bar indeterminate" id="bar"><span></span></div>
+      <div class="job-msg" id="msg">
+        Rodando a inferência frame a frame. Em host gratuito (CPU limitada)
+        isso pode levar alguns minutos — pode deixar a aba aberta.
+      </div>
+      <div class="job-error" id="err" style="display:none;"></div>
+      <a class="back" id="back" href="{{ url_for('index') }}" style="display:none;">
+        ← Tentar outro vídeo
+      </a>
+    </div>
+  </div>
+
+  <script>
+    const jobId = {{ job_id|tojson }};
+    const bar = document.getElementById('bar');
+    const fill = bar.querySelector('span');
+    const pct = document.getElementById('pct');
+    const frames = document.getElementById('frames');
+    const msg = document.getElementById('msg');
+    const err = document.getElementById('err');
+    const back = document.getElementById('back');
+
+    async function poll() {
+      let data;
+      try {
+        const r = await fetch('/status/' + jobId, { cache: 'no-store' });
+        data = await r.json();
+      } catch (e) {
+        // rede instável (spin-down etc.) — tenta de novo
+        return setTimeout(poll, 2000);
+      }
+
+      if (data.status === 'processing') {
+        const p = data.progress || {};
+        if (p.total > 0) {
+          const frac = Math.min(1, p.current / p.total);
+          const percent = Math.round(frac * 100);
+          bar.classList.remove('indeterminate');
+          fill.style.width = percent + '%';
+          pct.textContent = percent + '%';
+          frames.textContent = p.current + ' / ' + p.total + ' frames';
+        }
+        return setTimeout(poll, 1000);
+      }
+
+      if (data.status === 'done') {
+        fill.style.width = '100%';
+        pct.textContent = '100%';
+        frames.textContent = 'concluído';
+        window.location = data.result_url;
+        return;
+      }
+
+      if (data.status === 'error') {
+        bar.style.display = 'none';
+        pct.textContent = 'Falhou';
+        frames.textContent = '';
+        msg.style.display = 'none';
+        err.style.display = 'block';
+        err.textContent = '⚠ ' + (data.error || 'erro desconhecido') +
+          '  — vídeos menores/mais curtos costumam resolver em host gratuito.';
+        back.style.display = 'inline-flex';
+        return;
+      }
+
+      // not_found (job expirou após restart)
+      bar.style.display = 'none';
+      pct.textContent = 'Job expirou';
+      frames.textContent = '';
+      msg.style.display = 'none';
+      back.style.display = 'inline-flex';
+    }
+    poll();
+  </script>
+</body>
+</html>

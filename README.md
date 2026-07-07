@@ -201,8 +201,11 @@ python webapp/app.py
 
 Notas:
 
-- O processamento é **síncrono** (a página espera o pipeline terminar); para um
-  vídeo longo pode levar alguns minutos. Rode em vídeos curtos para demonstrar.
+- O processamento roda em **background** com **barra de progresso** (o upload
+  dispara um job e a página acompanha o status); para um vídeo longo pode levar
+  alguns minutos. Rode em vídeos curtos para demonstrar.
+- Custo ajustável em `config.yaml` (bloco `processing`: `max_width`,
+  `frame_stride`) — útil para hosts pequenos; ver `deploy/RENDER.md`.
 - O vídeo anotado é gravado com codec `mp4v`, que nem todo navegador toca
   inline. Se houver `ffmpeg` instalado, o front gera automaticamente uma versão
   H.264 para o preview; caso contrário, use o botão de download.

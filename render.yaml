@@ -24,3 +24,9 @@ services:
       # Upload menor no free tier (512 MB de RAM). Use vídeos curtos/leves.
       - key: MAX_UPLOAD_MB
         value: "40"
+      # Aperta o custo de processamento no free tier (512 MB / 0.1 CPU):
+      # frames menores (menos RAM/CPU) e detecção 1 a cada 3 frames.
+      - key: PROC_MAX_WIDTH
+        value: "480"
+      - key: PROC_FRAME_STRIDE
+        value: "3"

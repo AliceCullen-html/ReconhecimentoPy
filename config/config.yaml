@@ -27,6 +27,14 @@ alerts:
     when: "person_in_zone AND NOT operation_active"
     severity: "warning"
 
+processing:
+  # Custo de processamento. Útil para hosts pequenos (ex.: Render free 512 MB).
+  # max_width: redimensiona o frame antes de detectar/anotar (0 = original).
+  # frame_stride: detecta 1 a cada N frames (1 = todos); o vídeo e a máquina de
+  #   estados seguem quadro a quadro, então os tempos/debounce não mudam.
+  max_width: 1280
+  frame_stride: 1
+
 output:
   annotated_video: true
   events_json: true
