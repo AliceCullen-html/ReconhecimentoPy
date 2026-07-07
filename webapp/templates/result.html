@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Resultado — baia-vision-poc</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Resultado</h1>
+      <p class="sub">{{ original_name }} &middot; execução <code>{{ run_id }}</code></p>
+    </header>
+
+    <div class="panel">
+      <div class="meta">
+        <span>Frames processados: <b>{{ frames }}</b></span>
+        <span>FPS: <b>{{ fps }}</b></span>
+        <span>Eventos: <b>{{ events|length }}</b></span>
+      </div>
+    </div>
+
+    {% if inline_video %}
+    <div class="panel">
+      <div style="color:var(--muted);font-size:.85rem;margin-bottom:6px;">VÍDEO ANOTADO</div>
+      <video controls preload="metadata" src="{{ inline_video }}"></video>
+      <div class="links">
+        <a class="btn" href="{{ download_video }}" download>⬇ Baixar vídeo anotado</a>
+        {% if json_url %}<a class="btn" href="{{ json_url }}" download>⬇ Baixar events.json</a>{% endif %}
+      </div>
+      <p class="note">
+        Se o player não tocar (codec mp4v não é universal em navegadores),
+        use o botão de download. Instale <code>ffmpeg</code> na máquina para
+        habilitar o preview H.264 automático.
+      </p>
+    </div>
+    {% endif %}
+
+    <div class="panel">
+      <div style="color:var(--muted);font-size:.85rem;margin-bottom:10px;">LOG DE EVENTOS</div>
+      {% if events %}
+      <table>
+        <thead>
+          <tr><th>Tempo (s)</th><th>Tipo</th><th>Duração (s)</th><th>Descrição</th></tr>
+        </thead>
+        <tbody>
+          {% for ev in events %}
+          <tr>
+            <td>{{ '%.2f'|format(ev.timestamp_s) }}</td>
+            <td><span class="tag {{ ev.tipo }}">{{ ev.tipo }}</span></td>
+            <td>{{ '%.2f'|format(ev.duracao_s) if ev.duracao_s is defined else '—' }}</td>
+            <td>{{ ev.descricao }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty">Nenhuma operação detectada neste vídeo.</p>
+      {% endif %}
+    </div>
+
+    <a class="back" href="{{ url_for('index') }}">← Testar outro vídeo</a>
+  </div>
+</body>
+</html>

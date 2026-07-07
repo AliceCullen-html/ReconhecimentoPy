@@ -186,6 +186,30 @@ Detalhes de cada flag e de como adicionar uma regra: veja
 
 ---
 
+## Front de teste (opcional)
+
+Além do CLI, há um front web mínimo (Flask) em [`webapp/`](webapp/) só para
+**testar pelo navegador**: você sobe um vídeo por um campo de upload e vê a
+tabela de eventos, o vídeo anotado e o `events.json`. É uma camada isolada — o
+núcleo da POC continua rodável por CLI, sem framework web.
+
+```bash
+pip install -r requirements.txt -r webapp/requirements.txt
+python webapp/app.py
+# abra http://127.0.0.1:5000 e jogue o vídeo no campo de upload
+```
+
+Notas:
+
+- O processamento é **síncrono** (a página espera o pipeline terminar); para um
+  vídeo longo pode levar alguns minutos. Rode em vídeos curtos para demonstrar.
+- O vídeo anotado é gravado com codec `mp4v`, que nem todo navegador toca
+  inline. Se houver `ffmpeg` instalado, o front gera automaticamente uma versão
+  H.264 para o preview; caso contrário, use o botão de download.
+- Vale o mesmo aviso de uso responsável: **somente footage royalty-free**.
+
+---
+
 ## Testes
 
 ```bash

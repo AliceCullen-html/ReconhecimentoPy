@@ -1,0 +1,4 @@
+# Dependências do front de teste (opcional). O núcleo da POC não precisa disto.
+# Instale por cima de requirements.txt:
+#     pip install -r requirements.txt -r webapp/requirements.txt
+Flask==3.0.3

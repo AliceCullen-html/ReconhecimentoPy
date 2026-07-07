@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>baia-vision-poc — front de teste</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>baia-vision-poc</h1>
+      <p class="sub">Front de teste — suba um vídeo royalty-free para rodar o pipeline.</p>
+    </header>
+
+    <form class="panel" id="form" action="{{ url_for('process') }}" method="post"
+          enctype="multipart/form-data">
+      <label class="dropzone" id="drop">
+        <div>Arraste um vídeo aqui ou <strong>clique para escolher</strong></div>
+        <div class="note">.mp4 / .mov / .avi / .mkv — até 300 MB</div>
+        <input type="file" id="video" name="video"
+               accept=".mp4,.mov,.avi,.mkv,video/*" required>
+        <div class="filename" id="filename"></div>
+      </label>
+
+      <button class="primary" id="submit" type="submit" disabled>
+        Processar vídeo
+      </button>
+
+      <div class="spinner" id="spinner">
+        ⏳ Processando… a inferência frame a frame pode levar alguns minutos
+        dependendo do vídeo e do hardware. Não feche a aba.
+      </div>
+    </form>
+
+    <div class="panel">
+      <div style="color:var(--muted);font-size:.85rem;margin-bottom:8px;">
+        CONFIGURAÇÃO ATIVA (<code>config/config.yaml</code>)
+      </div>
+      <div class="meta">
+        <span>Modelo: <b>{{ cfg.model }}</b></span>
+        <span>Confiança: <b>{{ cfg.conf }}</b></span>
+        <span>Zona: <b>{{ cfg.zone }}</b></span>
+        <span>Alertas: <b>{{ cfg.alerts|length }}</b></span>
+      </div>
+      <p class="note">
+        ⚠️ Use somente <b>footage royalty-free</b> (Pexels/Pixabay/Mixkit).
+        Esta POC não é sistema de segurança de vida — ver README.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    const input = document.getElementById('video');
+    const drop = document.getElementById('drop');
+    const fname = document.getElementById('filename');
+    const submit = document.getElementById('submit');
+    const form = document.getElementById('form');
+    const spinner = document.getElementById('spinner');
+
+    function refresh() {
+      if (input.files.length) {
+        fname.textContent = '📄 ' + input.files[0].name;
+        submit.disabled = false;
+      } else {
+        fname.textContent = '';
+        submit.disabled = true;
+      }
+    }
+    input.addEventListener('change', refresh);
+
+    ['dragenter', 'dragover'].forEach(ev =>
+      drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('drag'); }));
+    ['dragleave', 'drop'].forEach(ev =>
+      drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('drag'); }));
+    drop.addEventListener('drop', e => {
+      if (e.dataTransfer.files.length) { input.files = e.dataTransfer.files; refresh(); }
+    });
+
+    form.addEventListener('submit', () => {
+      submit.disabled = true;
+      submit.textContent = 'Processando…';
+      spinner.classList.add('on');
+    });
+  </script>
+</body>
+</html>
