@@ -21,6 +21,7 @@ Uso::
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -52,7 +53,10 @@ OUTPUT_DIR = ROOT / "data" / "output"
 ALLOWED_EXT = {".mp4", ".avi", ".mov", ".mkv"}
 
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = 300 * 1024 * 1024  # 300 MB
+# Limite de upload configurável por env (MAX_UPLOAD_MB). Em deploys com pouca
+# RAM (ex.: Render free, 512 MB) convém baixar isso para evitar OOM.
+_max_mb = int(os.environ.get("MAX_UPLOAD_MB", "300"))
+app.config["MAX_CONTENT_LENGTH"] = _max_mb * 1024 * 1024
 
 
 def _config_summary() -> dict:

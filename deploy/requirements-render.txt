@@ -1,0 +1,19 @@
+# Dependências para o deploy no Render (free tier).
+#
+# Diferenças em relação ao requirements.txt local:
+#   * torch/torchvision na variante CPU (bem menor que a CUDA — cabe melhor
+#     no build e na RAM de 512 MB do free tier; o free não tem GPU mesmo).
+#   * opencv-python-headless em vez de opencv-python: servidor não tem libGL
+#     e não usamos janelas (cv2.imshow) — headless é o correto para deploy.
+#   * gunicorn: servidor WSGI de produção (o dev server do Flask não serve).
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+torch==2.4.1
+torchvision==0.19.1
+ultralytics==8.3.0
+opencv-python-headless==4.10.0.84
+numpy==1.26.4
+PyYAML==6.0.2
+Flask==3.0.3
+gunicorn==22.0.0

@@ -1,0 +1,26 @@
+# Blueprint do Render (deploy free tier).
+# No Render: New + > Blueprint > aponte para este repositório.
+# Ele lê este arquivo e cria o serviço web automaticamente.
+services:
+  - type: web
+    name: baia-vision-poc
+    runtime: python           # ambiente Python nativo (sem Docker)
+    plan: free                # 512 MB RAM / 0.1 CPU / spin-down por inatividade
+    region: oregon
+    branch: main
+    buildCommand: "pip install -r deploy/requirements-render.txt"
+    # 1 worker (RAM curta) + gthread p/ o health check responder enquanto
+    # um vídeo é processado; timeout alto porque o processamento é síncrono.
+    startCommand: "gunicorn webapp.app:app --bind 0.0.0.0:$PORT --workers 1 --worker-class gthread --threads 2 --timeout 600"
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      # Limita threads das libs numéricas para reduzir o uso de RAM no free.
+      - key: OMP_NUM_THREADS
+        value: "1"
+      - key: OPENBLAS_NUM_THREADS
+        value: "1"
+      # Upload menor no free tier (512 MB de RAM). Use vídeos curtos/leves.
+      - key: MAX_UPLOAD_MB
+        value: "40"

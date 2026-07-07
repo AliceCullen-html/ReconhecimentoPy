@@ -208,6 +208,17 @@ Notas:
   H.264 para o preview; caso contrário, use o botão de download.
 - Vale o mesmo aviso de uso responsável: **somente footage royalty-free**.
 
+### Deploy público (Render, free)
+
+Dá para publicar esse front no [Render](https://render.com) no plano free — o
+[`render.yaml`](render.yaml) na raiz já descreve o serviço. Passo a passo,
+limites do free tier (RAM de 512 MB, spin-down, vídeos curtos) e alternativas
+em [`deploy/RENDER.md`](deploy/RENDER.md).
+
+> Observação: **não** funciona no Vercel — é serverless e essa carga (ML +
+> vídeo) não cabe lá (tamanho da função, limite de upload e timeout). Use
+> Render, Hugging Face Spaces ou similar.
+
 ---
 
 ## Testes
