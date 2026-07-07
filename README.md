@@ -211,16 +211,18 @@ Notas:
   H.264 para o preview; caso contrário, use o botão de download.
 - Vale o mesmo aviso de uso responsável: **somente footage royalty-free**.
 
-### Deploy público (Render, free)
+### Deploy público
 
-Dá para publicar esse front no [Render](https://render.com) no plano free — o
-[`render.yaml`](render.yaml) na raiz já descreve o serviço. Passo a passo,
-limites do free tier (RAM de 512 MB, spin-down, vídeos curtos) e alternativas
-em [`deploy/RENDER.md`](deploy/RENDER.md).
+- **Hugging Face Spaces (recomendado, grátis):** 2 vCPUs + 16 GB de RAM no tier
+  gratuito — processa em segundos. Há um [`Dockerfile`](Dockerfile) pronto que
+  reaproveita este front. Guia: [`deploy/HUGGINGFACE.md`](deploy/HUGGINGFACE.md).
+- **Render (grátis, porém lento):** o [`render.yaml`](render.yaml) descreve o
+  serviço, mas o free tier (**0.1 vCPU / 512 MB**) processa vídeo muito devagar e
+  pode dar OOM — serve só para clipes minúsculos. Guia e limites em
+  [`deploy/RENDER.md`](deploy/RENDER.md).
 
-> Observação: **não** funciona no Vercel — é serverless e essa carga (ML +
-> vídeo) não cabe lá (tamanho da função, limite de upload e timeout). Use
-> Render, Hugging Face Spaces ou similar.
+> **Não** funciona no Vercel — é serverless e essa carga (ML + vídeo) não cabe lá
+> (tamanho da função, limite de upload e timeout). Prefira o Hugging Face Spaces.
 
 ---
 

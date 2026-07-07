@@ -1,0 +1,14 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+.pytest_cache
+data/input/*
+data/output/*
+!data/input/.gitkeep
+!data/output/.gitkeep
+*.mp4
+*.avi
+*.mov
+scratchpad
