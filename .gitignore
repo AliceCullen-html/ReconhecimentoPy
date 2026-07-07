@@ -1,0 +1,34 @@
+# --- Dados de entrada/saída (não versionar footage nem resultados) ---
+data/input/*
+data/output/*
+# Manter os diretórios versionados via .gitkeep
+!data/input/.gitkeep
+!data/output/.gitkeep
+
+# --- Pesos de modelo (baixados sob demanda pelo ultralytics) ---
+*.pt
+
+# --- Mídia e artefatos gerados ---
+*.mp4
+*.avi
+*.mov
+# events.json e afins são gerados em data/output/ (já ignorado acima)
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.eggs/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- Editores / SO ---
+.vscode/
+.idea/
+.DS_Store
