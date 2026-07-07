@@ -20,12 +20,17 @@
     <div class="panel">
       <div class="progress-head">
         <span class="pct" id="pct">0%</span>
-        <span class="frames" id="frames">iniciando…</span>
+        <span class="frames" id="frames">carregando modelo…</span>
       </div>
       <div class="bar indeterminate" id="bar"><span></span></div>
       <div class="job-msg" id="msg">
         Rodando a inferência frame a frame. Em host gratuito (CPU limitada)
         isso pode levar alguns minutos — pode deixar a aba aberta.
+        <br><b id="elapsed" style="color:var(--muted)">0s decorridos</b>
+      </div>
+      <div class="job-msg" id="hint" style="display:none;">
+        ⚠ Vídeo em alta resolução detectado — decodificar 4K nessa CPU é lento.
+        Para a demo, prefira um clipe <b>720p/1080p</b>.
       </div>
       <div class="job-error" id="err" style="display:none;"></div>
       <a class="back" id="back" href="{{ url_for('index') }}" style="display:none;">
@@ -43,6 +48,19 @@
     const msg = document.getElementById('msg');
     const err = document.getElementById('err');
     const back = document.getElementById('back');
+    const elapsed = document.getElementById('elapsed');
+    const hint = document.getElementById('hint');
+
+    // Cronômetro: prova de vida mesmo enquanto o 1º frame (pesado) processa.
+    const t0 = Date.now();
+    const clock = setInterval(() => {
+      const s = Math.round((Date.now() - t0) / 1000);
+      elapsed.textContent = s + 's decorridos';
+      // Após 25s ainda em 0 frames => provável fonte pesada (4K etc.)
+      if (s >= 25 && frames.textContent.indexOf('frames') === -1) {
+        hint.style.display = 'block';
+      }
+    }, 1000);
 
     async function poll() {
       let data;
@@ -63,11 +81,16 @@
           fill.style.width = percent + '%';
           pct.textContent = percent + '%';
           frames.textContent = p.current + ' / ' + p.total + ' frames';
+        } else if (p.current > 0) {
+          // Sem total confiável: mostra a contagem para não parecer travado.
+          frames.textContent = p.current + ' frames';
         }
         return setTimeout(poll, 1000);
       }
 
       if (data.status === 'done') {
+        clearInterval(clock);
+        bar.classList.remove('indeterminate');
         fill.style.width = '100%';
         pct.textContent = '100%';
         frames.textContent = 'concluído';
@@ -76,6 +99,7 @@
       }
 
       if (data.status === 'error') {
+        clearInterval(clock);
         bar.style.display = 'none';
         pct.textContent = 'Falhou';
         frames.textContent = '';
@@ -87,11 +111,15 @@
         return;
       }
 
-      // not_found (job expirou após restart)
+      // not_found (job expirou após restart, ou o worker caiu por falta de RAM)
+      clearInterval(clock);
       bar.style.display = 'none';
-      pct.textContent = 'Job expirou';
+      pct.textContent = 'Job perdido';
       frames.textContent = '';
       msg.style.display = 'none';
+      err.style.display = 'block';
+      err.textContent = '⚠ O job sumiu (provável reinício por falta de memória, '
+        + 'comum com vídeos grandes/4K no host gratuito). Tente um clipe 720p/1080p e curto.';
       back.style.display = 'inline-flex';
     }
     poll();
