@@ -1,6 +1,12 @@
-# Deploy no Hugging Face Spaces (grátis, rápido)
+# Deploy no Hugging Face Spaces
 
-O HF Spaces free dá **2 vCPUs + 16 GB de RAM** — ~40× mais CPU que o Render
+> ⚠️ **Atenção — mudança de política:** hoje os Spaces com *compute* (Docker e
+> Gradio) **exigem assinatura PRO** (paga). O tier gratuito só hospeda Spaces
+> **estáticos** (HTML/JS), que não rodam nosso backend Python. Para hospedagem
+> grátis com CPU de verdade, veja [`COLAB.md`](COLAB.md) (recomendado) ou o
+> Google Cloud Run. Este guia vale se você tiver **HF PRO**.
+
+Com PRO, o HF Spaces dá **2 vCPUs + 16 GB de RAM** — ~40× mais CPU que o Render
 free. O mesmo vídeo que levava minutos roda em segundos. Usamos um **Docker
 Space** que reaproveita o front Flask deste repo (o [`Dockerfile`](../Dockerfile)
 na raiz faz tudo: instala deps, pré-baixa os pesos YOLO e sobe o gunicorn na

@@ -213,16 +213,22 @@ Notas:
 
 ### Deploy público
 
-- **Hugging Face Spaces (recomendado, grátis):** 2 vCPUs + 16 GB de RAM no tier
-  gratuito — processa em segundos. Há um [`Dockerfile`](Dockerfile) pronto que
-  reaproveita este front. Guia: [`deploy/HUGGINGFACE.md`](deploy/HUGGINGFACE.md).
+- **Google Colab (recomendado, grátis + rápido):** abre o [notebook em um
+  clique](https://colab.research.google.com/github/AliceCullen-html/ReconhecimentoPy/blob/main/deploy/colab/baia_vision_colab.ipynb),
+  roda o app e gera um **link público** (via cloudflared). CPU/GPU de verdade,
+  sem conta paga. URL temporária (enquanto o notebook roda) — ideal para demo.
+  Guia: [`deploy/COLAB.md`](deploy/COLAB.md).
+- **Google Cloud Run:** URL fixa 24/7 e free tier real; reaproveita o
+  [`Dockerfile`](Dockerfile). Precisa de conta Google Cloud.
 - **Render (grátis, porém lento):** o [`render.yaml`](render.yaml) descreve o
   serviço, mas o free tier (**0.1 vCPU / 512 MB**) processa vídeo muito devagar e
-  pode dar OOM — serve só para clipes minúsculos. Guia e limites em
-  [`deploy/RENDER.md`](deploy/RENDER.md).
+  pode dar OOM — só clipes minúsculos. Guia em [`deploy/RENDER.md`](deploy/RENDER.md).
+- **Hugging Face Spaces:** funciona com o [`Dockerfile`](Dockerfile), mas Spaces
+  com compute (Docker/Gradio) hoje **exigem PRO** (pago); o tier grátis só hospeda
+  Spaces estáticos. Guia: [`deploy/HUGGINGFACE.md`](deploy/HUGGINGFACE.md).
 
 > **Não** funciona no Vercel — é serverless e essa carga (ML + vídeo) não cabe lá
-> (tamanho da função, limite de upload e timeout). Prefira o Hugging Face Spaces.
+> (tamanho da função, limite de upload e timeout).
 
 ---
 
