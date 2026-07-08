@@ -12,6 +12,8 @@ não são parâmetros de negócio, então não vão para o YAML.
 
 from __future__ import annotations
 
+import unicodedata
+
 import cv2
 import numpy as np
 
@@ -19,6 +21,16 @@ from .alerts import FiredAlert
 from .detector import Detection
 from .operation import State
 from .zones import Zone
+
+
+def _ascii(text: str) -> str:
+    """Normaliza texto para ASCII para desenhar com a fonte do OpenCV.
+
+    A fonte Hershey do OpenCV não renderiza acentos nem emoji (viram ``????``).
+    Removemos acentos (``operação`` → ``operacao``) e descartamos o resto.
+    """
+    normalized = unicodedata.normalize("NFKD", text)
+    return normalized.encode("ascii", "ignore").decode("ascii")
 
 # Cores BGR (OpenCV). Camada de apresentação, não configuração de negócio.
 _COLOR_PERSON = (0, 200, 255)   # amarelo-alaranjado
@@ -73,6 +85,7 @@ def draw_detections(frame: np.ndarray, detections: list[Detection]) -> None:
         if det.track_id is not None:
             tag += f" #{det.track_id}"
 
+        tag = _ascii(tag)
         (tw, th), _ = cv2.getTextSize(tag, _FONT, 0.5, 1)
         cv2.rectangle(frame, (x1, y1 - th - 6), (x1 + tw + 4, y1), color, -1)
         cv2.putText(
@@ -109,7 +122,7 @@ def draw_hud(
     status_color = (
         _COLOR_ZONE_ACTIVE if state is State.ACTIVE else _COLOR_ZONE_IDLE
     )
-    text = (
+    text = _ascii(
         f"{zone_name}  |  STATUS: {state.value}  "
         f"|  OPERACAO: {_format_timer(elapsed_s)}"
     )
@@ -136,8 +149,9 @@ def draw_alerts(frame: np.ndarray, alerts: list[FiredAlert]) -> None:
     cv2.rectangle(frame, (0, top), (w, top + band_h), _COLOR_ALERT, -1)
 
     # Mostra o primeiro alerta (mais relevante); indica quantos mais existem.
+    # Prefixo "!" no lugar de emoji (a fonte do OpenCV não desenha emoji).
     first = alerts[0]
-    text = f"⚠ ALERTA: {first.description}"
+    text = f"! ALERTA: {_ascii(first.description)}"
     if len(alerts) > 1:
         text += f"  (+{len(alerts) - 1})"
     cv2.putText(

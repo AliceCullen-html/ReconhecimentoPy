@@ -83,6 +83,15 @@ def _load_config_with_overrides() -> dict:
     if os.environ.get("PROC_FRAME_STRIDE"):
         proc["frame_stride"] = int(os.environ["PROC_FRAME_STRIDE"])
     cfg["processing"] = proc
+
+    # Modelo/confiança também sobrescrevíveis por env — permite usar um modelo
+    # mais forte (ex.: yolo11s.pt) no deploy sem mexer no config versionado.
+    model = dict(cfg.get("model", {}))
+    if os.environ.get("MODEL_WEIGHTS"):
+        model["weights"] = os.environ["MODEL_WEIGHTS"]
+    if os.environ.get("MODEL_CONF"):
+        model["conf"] = float(os.environ["MODEL_CONF"])
+    cfg["model"] = model
     return cfg
 
 
