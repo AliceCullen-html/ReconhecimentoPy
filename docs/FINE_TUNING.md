@@ -8,6 +8,10 @@ detector customizado por cima do pré-treinado.
 
 Este é um roteiro de **próximos passos**, não um tutorial exaustivo.
 
+> 🚀 **Notebook pronto de treino:** há um Colab que faz tudo isto ponta a ponta
+> (baixa dataset, treina, avalia, exporta `best.pt`):
+> [abrir `treino_forklift.ipynb` no Colab](https://colab.research.google.com/github/AliceCullen-html/ReconhecimentoPy/blob/main/deploy/colab/treino_forklift.ipynb).
+
 ## Visão geral do processo
 
 ```
